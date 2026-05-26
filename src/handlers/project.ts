@@ -12,7 +12,7 @@ projectComposer.command("addproject", async (ctx) => {
   await ctx.conversation.enter("addProject");
 });
 
-function buildProjectView(projectName: string) {
+export function buildProjectView(projectName: string) {
   const data = readData();
   const project = data.projects[projectName];
   if (!project) return null;
@@ -37,6 +37,7 @@ function buildProjectView(projectName: string) {
     .text("🗑 Del Cmd", `delcmd_project:${projectName}`)
     .row()
     .text("📤 Send File", `proj_sendfile:${projectName}`)
+    .text("📂 Browse", `fb:open:${projectName}`)
     .row()
     .text("🔑 Deploy Secret", `proj_secret:${projectName}`)
     .row()

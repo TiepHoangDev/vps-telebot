@@ -16,6 +16,10 @@ export type SessionData = {
   awaitingInput?: "cmd_suffix" | "cmd_shell" | "send_file";
   pendingProject?: string;
   pendingCmdSuffix?: string;
+  fbDir?: string;
+  fbProject?: string;
+  fbSelected?: string;
+  fbItems?: string[];
 };
 
 export type BotContext = Context & SessionFlavor<SessionData> & ConversationFlavor<Context>;

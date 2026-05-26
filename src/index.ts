@@ -10,6 +10,7 @@ import { handleDeployCommand } from "./handlers/deploy";
 import { runnerMiddleware } from "./handlers/runner";
 import { handleHelp } from "./handlers/help";
 import { inputMiddleware } from "./handlers/input";
+import { fileBrowserComposer } from "./handlers/filebrowser";
 import { BotContext, SessionData } from "./types";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -40,6 +41,7 @@ bot.command("vps", async (ctx: BotContext) => {
 
 bot.use(inputMiddleware);
 bot.use(projectComposer);
+bot.use(fileBrowserComposer);
 bot.use(commandComposer);
 bot.use(runnerMiddleware);
 
