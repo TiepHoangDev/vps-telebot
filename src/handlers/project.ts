@@ -1,6 +1,6 @@
 import { Composer, InputFile, InlineKeyboard } from "grammy";
 import { BotContext } from "../types";
-import { readData, writeData } from "../storage";
+import { readData, writeData, findCommand, groupLabel } from "../storage";
 import { generateSecret } from "../utils";
 import { log } from "../logger";
 import { runCommand, escapeHtml, cmdLabel } from "../executor";
@@ -20,22 +20,19 @@ export function buildProjectView(projectName: string) {
   const secretLine = project.deploy_secret
     ? `\n🔑 Secret: <code>${project.deploy_secret}</code>`
     : "";
-
   const text = `📁 <b>${projectName}</b>\nPath: <code>${project.path}</code>${secretLine}`;
 
-  const cmdNames = Object.keys(project.commands);
   const keyboard = new InlineKeyboard();
 
-  cmdNames.forEach((cmd, i) => {
-    keyboard.text(cmdLabel(cmd), `run_cmd:${cmd}`);
-    if ((i + 1) % 3 === 0) keyboard.row();
+  // One button per group — always include Custom as entry point for adding cmds
+  const groups = new Set([...Object.keys(project.commands), "Custom"]);
+  groups.forEach(g => {
+    const count = project.commands[g] ? Object.keys(project.commands[g]).length : 0;
+    const label = count > 0 ? `${groupLabel(g)}  (${count})` : groupLabel(g);
+    keyboard.text(label, `proj_group:${projectName}:${g}`).row();
   });
-  if (cmdNames.length % 3 !== 0) keyboard.row();
 
   keyboard
-    .text("➕ Add Cmd", `proj_addcmd:${projectName}`)
-    .text("🗑 Del Cmd", `delcmd_project:${projectName}`)
-    .row()
     .text("📤 Send File", `proj_sendfile:${projectName}`)
     .text("📂 Browse", `fb:open:${projectName}`)
     .row()
@@ -48,6 +45,35 @@ export function buildProjectView(projectName: string) {
   return { text, keyboard };
 }
 
+function buildGroupView(projectName: string, groupName: string) {
+  const data = readData();
+  const project = data.projects[projectName];
+  if (!project) return null;
+
+  const cmds = project.commands[groupName] ?? {};
+  const cmdNames = Object.keys(cmds);
+  const text = cmdNames.length === 0
+    ? `📁 <b>${projectName}</b> › ${groupLabel(groupName)}\n<i>No commands yet.</i>`
+    : `📁 <b>${projectName}</b> › ${groupLabel(groupName)}`;
+
+  const keyboard = new InlineKeyboard();
+
+  cmdNames.forEach((cmd, i) => {
+    keyboard.text(cmdLabel(cmd), `run_cmd:${cmd}`);
+    if ((i + 1) % 3 === 0) keyboard.row();
+  });
+  if (cmdNames.length % 3 !== 0 || cmdNames.length === 0) keyboard.row();
+
+  if (groupName === "Custom") {
+    keyboard.text("➕ Add Cmd", `proj_addcmd:${projectName}`);
+    if (cmdNames.length > 0) keyboard.text("🗑 Del Cmd", `delcmd_project:${projectName}`);
+    keyboard.row();
+  }
+
+  keyboard.text("« Back", `list_project:${projectName}`);
+  return { text, keyboard };
+}
+
 projectComposer.on("callback_query:data", async (ctx, next) => {
   const data = ctx.callbackQuery.data;
 
@@ -56,7 +82,8 @@ projectComposer.on("callback_query:data", async (ctx, next) => {
     const botData = readData();
     let shellCommand: string | null = null;
     for (const p of Object.values(botData.projects)) {
-      if (p.commands[commandName]) { shellCommand = p.commands[commandName]; break; }
+      shellCommand = findCommand(p, commandName);
+      if (shellCommand) break;
     }
     if (!shellCommand) {
       await ctx.answerCallbackQuery("Command not found");
@@ -78,6 +105,16 @@ projectComposer.on("callback_query:data", async (ctx, next) => {
       };
       return { chatId: ctx.chat!.id, messageId: ackMsg.message_id, editFn, sendFileFn };
     });
+
+  } else if (data.startsWith("proj_group:")) {
+    const rest = data.slice("proj_group:".length);
+    const sep = rest.indexOf(":");
+    const projectName = rest.slice(0, sep);
+    const groupName = rest.slice(sep + 1);
+    const view = buildGroupView(projectName, groupName);
+    if (!view) { await ctx.answerCallbackQuery("Project not found"); return; }
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(view.text, { parse_mode: "HTML", reply_markup: view.keyboard });
 
   } else if (data.startsWith("list_project:")) {
     const projectName = data.replace("list_project:", "");
@@ -143,7 +180,6 @@ projectComposer.on("callback_query:data", async (ctx, next) => {
       `🔑 Deploy secret for <b>${projectName}</b>:\n\n<code>${secret}</code>\n\n<b>GitHub Actions:</b>\n<pre>${escapeHtml(snippet)}</pre>`,
       { parse_mode: "HTML" }
     );
-    // Refresh view
     const view = buildProjectView(projectName);
     if (view) await ctx.reply(view.text, { parse_mode: "HTML", reply_markup: view.keyboard });
 

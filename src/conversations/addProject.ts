@@ -30,13 +30,15 @@ export async function addProjectConversation(
     projectName = newName;
   }
 
-  const commands: Record<string, string> = {
-    [`${projectName}_up`]:     `docker compose -f ${dockerComposePath} up -d`,
-    [`${projectName}_down`]:   `docker compose -f ${dockerComposePath} down`,
-    [`${projectName}_downv`]:  `docker compose -f ${dockerComposePath} down -v`,
-    [`${projectName}_logs`]:   `docker compose -f ${dockerComposePath} logs --tail=1000`,
-    [`${projectName}_pull`]:   `docker compose -f ${dockerComposePath} pull`,
-    [`${projectName}_deploy`]: `docker compose -f ${dockerComposePath} pull && docker compose -f ${dockerComposePath} up -d`,
+  const commands: Record<string, Record<string, string>> = {
+    Docker: {
+      [`${projectName}_up`]:     `docker compose -f ${dockerComposePath} up -d`,
+      [`${projectName}_down`]:   `docker compose -f ${dockerComposePath} down`,
+      [`${projectName}_downv`]:  `docker compose -f ${dockerComposePath} down -v`,
+      [`${projectName}_logs`]:   `docker compose -f ${dockerComposePath} logs --tail=1000`,
+      [`${projectName}_pull`]:   `docker compose -f ${dockerComposePath} pull`,
+      [`${projectName}_deploy`]: `docker compose -f ${dockerComposePath} pull && docker compose -f ${dockerComposePath} up -d`,
+    },
   };
 
   const project: Project = { path: dockerComposePath, commands };
@@ -44,9 +46,10 @@ export async function addProjectConversation(
   writeData(data);
   log("PROJECT", `Added: ${projectName}`);
 
-  // Show commands as clickable buttons
+  // Show created commands as clickable buttons
   const keyboard = new InlineKeyboard();
-  Object.keys(commands).forEach((cmd, i) => {
+  const dockerCmds = Object.keys(commands.Docker);
+  dockerCmds.forEach((cmd, i) => {
     keyboard.text(cmdLabel(cmd), `run_cmd:${cmd}`);
     if ((i + 1) % 3 === 0) keyboard.row();
   });

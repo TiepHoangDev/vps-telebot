@@ -4,7 +4,7 @@ import { ConversationFlavor } from "@grammyjs/conversations";
 export interface Project {
   path: string;
   deploy_secret?: string;
-  commands: Record<string, string>;
+  commands: Record<string, Record<string, string>>;
 }
 
 export interface BotData {

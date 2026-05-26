@@ -1,6 +1,6 @@
 import { exec } from "child_process";
 import { promisify } from "util";
-import { readData } from "../storage";
+import { readData, findCommand } from "../storage";
 import { log } from "../logger";
 import { escapeHtml } from "../executor";
 
@@ -33,7 +33,7 @@ export async function handleDeployCommand(ctx: any): Promise<void> {
     return;
   }
 
-  const deployCmd = project.commands[`${projectName}_deploy`];
+  const deployCmd = findCommand(project, `${projectName}_deploy`);
   if (!deployCmd) {
     await ctx.reply(`⛔ No deploy command found for "${projectName}"`);
     return;

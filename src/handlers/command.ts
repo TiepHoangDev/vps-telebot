@@ -1,6 +1,6 @@
 import { Context, Composer } from "grammy";
 import { InlineKeyboard } from "grammy";
-import { readData, writeData } from "../storage";
+import { readData, writeData, allCommands, deleteCommand } from "../storage";
 import { log } from "../logger";
 
 export const commandComposer = new Composer<Context>();
@@ -14,14 +14,15 @@ commandComposer.on("callback_query:data", async (ctx, next) => {
     const botData = readData();
     const project = botData.projects[projectName];
 
-    if (!project || Object.keys(project.commands).length === 0) {
+    const cmds = project ? allCommands(project) : {};
+    if (!project || Object.keys(cmds).length === 0) {
       await ctx.answerCallbackQuery();
       await ctx.reply("❌ No commands in this project");
       return;
     }
 
     const keyboard = new InlineKeyboard();
-    Object.keys(project.commands).forEach(cmdName =>
+    Object.keys(cmds).forEach(cmdName =>
       keyboard.text(cmdName, `delcmd_confirm:${projectName}:${cmdName}`).row()
     );
     await ctx.answerCallbackQuery();
@@ -32,8 +33,7 @@ commandComposer.on("callback_query:data", async (ctx, next) => {
     const commandName = rest.join(":");
     const botData = readData();
 
-    if (botData.projects[projectName]?.commands[commandName]) {
-      delete botData.projects[projectName].commands[commandName];
+    if (botData.projects[projectName] && deleteCommand(botData.projects[projectName], commandName)) {
       writeData(botData);
       log("COMMAND", `Deleted /${commandName} from ${projectName}`);
       await ctx.answerCallbackQuery();

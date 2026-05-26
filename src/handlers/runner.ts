@@ -1,5 +1,5 @@
 import { Middleware, InputFile } from "grammy";
-import { readData } from "../storage";
+import { readData, allCommands } from "../storage";
 import { handleHelp } from "./help";
 import { runCommand } from "../executor";
 
@@ -20,7 +20,8 @@ export const runnerMiddleware: Middleware<any> = async (ctx, next) => {
   const data = readData();
   let shellCommand: string | null = null;
   for (const project of Object.values(data.projects)) {
-    if (project.commands[commandName]) { shellCommand = project.commands[commandName]; break; }
+    const cmds = allCommands(project);
+    if (cmds[commandName]) { shellCommand = cmds[commandName]; break; }
   }
 
   if (!shellCommand) {

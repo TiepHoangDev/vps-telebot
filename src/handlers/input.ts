@@ -84,8 +84,10 @@ export const inputMiddleware: Middleware<any> = async (ctx, next) => {
     const commandName = `${projectName}_${suffix}`;
 
     const data = readData();
-    if (data.projects[projectName]) {
-      data.projects[projectName].commands[commandName] = shellCommand;
+    const project = data.projects[projectName];
+    if (project) {
+      if (!project.commands["Custom"]) project.commands["Custom"] = {};
+      project.commands["Custom"][commandName] = shellCommand;
       writeData(data);
       log("COMMAND", `Added ${commandName}`);
       await ctx.reply(`✅ Command <code>/${commandName}</code> saved!`, { parse_mode: "HTML" });
