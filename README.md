@@ -33,7 +33,7 @@ services:
     image: ghcr.io/tiephoangdev/vps-telebot:latest
     restart: unless-stopped
     volumes:
-      - ./data.json:/app/data.json
+      - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - .env
@@ -46,13 +46,12 @@ Create `.env` — **never commit this file**:
 ```env
 BOT_TOKEN=your_telegram_bot_token
 SETUP_PASS=a_strong_setup_password
-DATA_PATH=/app/data.json
+DATA_PATH=/app/data/data.json
 ```
 
 ### 3. Run
 
 ```bash
-touch data.json
 docker compose up -d
 ```
 

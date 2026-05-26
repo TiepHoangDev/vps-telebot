@@ -4,7 +4,7 @@ services:
     build: .
     restart: unless-stopped
     volumes:
-      - ./data.json:/app/data.json
+      - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - .env
