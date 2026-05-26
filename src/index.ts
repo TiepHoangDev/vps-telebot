@@ -1,31 +1,27 @@
 import "dotenv/config";
-import { Bot, session, Context } from "grammy";
-import { conversations, createConversation, ConversationFlavor } from "@grammyjs/conversations";
-import { SessionFlavor } from "grammy";
+import { Bot, session } from "grammy";
+import { conversations, createConversation } from "@grammyjs/conversations";
 import { authMiddleware } from "./middleware/auth";
 import { addProjectConversation } from "./conversations/addProject";
-import { addCommandConversation } from "./conversations/addCommand";
 import { handleVpsCommand } from "./handlers/vps";
 import { projectComposer } from "./handlers/project";
 import { commandComposer } from "./handlers/command";
 import { handleDeployCommand } from "./handlers/deploy";
 import { runnerMiddleware } from "./handlers/runner";
 import { handleHelp } from "./handlers/help";
+import { inputMiddleware } from "./handlers/input";
+import { BotContext, SessionData } from "./types";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
   throw new Error("BOT_TOKEN environment variable is required");
 }
 
-type SessionData = { selectedProject?: string };
-type BotContext = Context & SessionFlavor<SessionData> & ConversationFlavor<Context>;
-
 const bot = new Bot<BotContext>(BOT_TOKEN);
 
 bot.use(session({ initial: (): SessionData => ({}) }));
 bot.use(conversations());
 bot.use(createConversation(addProjectConversation, "addProject"));
-bot.use(createConversation(addCommandConversation, "addCommand"));
 
 // /deploy bypasses auth — validated by secret key
 bot.command("deploy", async (ctx: BotContext) => {
@@ -42,6 +38,7 @@ bot.command("vps", async (ctx: BotContext) => {
   await handleVpsCommand(ctx);
 });
 
+bot.use(inputMiddleware);
 bot.use(projectComposer);
 bot.use(commandComposer);
 bot.use(runnerMiddleware);

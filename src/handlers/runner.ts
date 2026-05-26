@@ -1,4 +1,4 @@
-import { Middleware } from "grammy";
+import { Middleware, InputFile } from "grammy";
 import { readData } from "../storage";
 import { handleHelp } from "./help";
 import { runCommand } from "../executor";
@@ -44,7 +44,10 @@ export const runnerMiddleware: Middleware<any> = async (ctx, next) => {
           await ctx.reply(text, { parse_mode: "HTML" });
         }
       };
-      return { chatId: ctx.chat.id, messageId: ackMsg.message_id, editFn };
+      const sendFileFn = async (buf: Buffer, name: string) => {
+        await ctx.replyWithDocument(new InputFile(buf, name));
+      };
+      return { chatId: ctx.chat.id, messageId: ackMsg.message_id, editFn, sendFileFn };
     });
   } finally {
     clearInterval(typingInterval);

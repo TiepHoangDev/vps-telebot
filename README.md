@@ -25,29 +25,17 @@ A Telegram bot for managing your VPS and Docker Compose projects — directly fr
 mkdir vps-telebot && cd vps-telebot
 ```
 
-Create `docker-compose.yml`:
-
-```yaml
-services:
-  telebot:
-    image: ghcr.io/tiephoangdev/vps-telebot:latest
-    restart: unless-stopped
-    volumes:
-      - ./data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
-    env_file:
-      - .env
-```
+Copy [`docker-compose.yml`](docker-compose.yml) from this repo.
 
 ### 2. Configure environment
 
-Create `.env` — **never commit this file**:
+Copy [`.env.example`](.env.example) to `.env` and fill in the values:
 
-```env
-BOT_TOKEN=your_telegram_bot_token
-SETUP_PASS=a_strong_setup_password
-DATA_PATH=/app/data/data.json
-```
+| Variable | Description |
+|---|---|
+| `BOT_TOKEN` | Telegram bot token from @BotFather |
+| `SETUP_PASS` | Password for first-time owner registration |
+| `DATA_PATH` | Path to data file (default: `/app/data/data.json`) |
 
 ### 3. Run
 
@@ -90,6 +78,7 @@ Path: /root/myapp/docker-compose.yml
 [ my_custom ]
 
 [ ➕ Add Cmd ] [ 🗑 Del Cmd ]
+[ 📤 Send File               ]
 [ 🔑 Deploy Secret          ]
 [ 🗑 Delete Project          ]
 [ « Back                    ]
@@ -170,7 +159,7 @@ npm run dev
 
 ### CI/CD — Automatic Docker image builds
 
-Every push to `main` triggers `.github/workflows/build.yml`, which builds and pushes the image to `ghcr.io/tiephoangdev/vps-telebot:latest`. Releases are also tagged with the semver version.
+Every push to `master` triggers `.github/workflows/build.yml`, which builds and pushes the image to `ghcr.io/tiephoangdev/vps-telebot:latest`. Releases are also tagged with the semver version.
 
 ---
 

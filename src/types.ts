@@ -1,10 +1,21 @@
+import { Context, SessionFlavor } from "grammy";
+import { ConversationFlavor } from "@grammyjs/conversations";
+
 export interface Project {
   path: string;
   deploy_secret?: string;
-  commands: Record<string, string>; // command name → shell command string
+  commands: Record<string, string>;
 }
 
 export interface BotData {
   allowed_users: number[];
-  projects: Record<string, Project>; // project name → Project
+  projects: Record<string, Project>;
 }
+
+export type SessionData = {
+  awaitingInput?: "cmd_suffix" | "cmd_shell" | "send_file";
+  pendingProject?: string;
+  pendingCmdSuffix?: string;
+};
+
+export type BotContext = Context & SessionFlavor<SessionData> & ConversationFlavor<Context>;

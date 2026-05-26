@@ -6,6 +6,6 @@ services:
     volumes:
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
-      - /root:/root:ro
+      - /root:/root:rw
     env_file:
       - .env

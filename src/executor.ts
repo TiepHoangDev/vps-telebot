@@ -8,12 +8,19 @@ const SHELL = process.platform === "win32"
   ? (process.env.ComSpec || "cmd.exe")
   : "/bin/sh";
 
+type RunCallbacks = {
+  chatId: number;
+  messageId: number;
+  editFn: (text: string) => Promise<void>;
+  sendFileFn: (buf: Buffer, name: string) => Promise<void>;
+};
+
 export async function runCommand(
   commandName: string,
   shellCommand: string,
-  onStart: () => Promise<{ chatId: number; messageId: number; editFn: (text: string) => Promise<void> }>
+  onStart: () => Promise<RunCallbacks>
 ): Promise<void> {
-  const { editFn } = await onStart();
+  const { editFn, sendFileFn } = await onStart();
 
   const isLogs = commandName.includes("logs");
   const timeout = isLogs ? 300000 : 60000;
@@ -28,9 +35,15 @@ export async function runCommand(
     });
 
     const output = stdout || stderr || "(no output)";
-    const trimmed = output.length > 3800 ? output.substring(0, 3800) + "\n...(truncated)" : output;
-    log("RUN", `/${commandName} done`);
-    await editFn(`✅ <code>/${commandName}</code>\n<pre>${escapeHtml(trimmed)}</pre>`);
+    if (isLogs) {
+      log("RUN", `/${commandName} done (file)`);
+      await editFn(`✅ <code>/${commandName}</code>`);
+      await sendFileFn(Buffer.from(output), `${commandName}.log`);
+    } else {
+      const trimmed = output.length > 3800 ? output.substring(0, 3800) + "\n...(truncated)" : output;
+      log("RUN", `/${commandName} done`);
+      await editFn(`✅ <code>/${commandName}</code>\n<pre>${escapeHtml(trimmed)}</pre>`);
+    }
   } catch (error: any) {
     let msg = `❌ <code>/${commandName}</code> failed`;
     if (error.killed) {

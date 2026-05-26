@@ -1,15 +1,12 @@
-import { Context, Composer, SessionFlavor } from "grammy";
-import { ConversationFlavor } from "@grammyjs/conversations";
-import { InlineKeyboard } from "grammy";
+import { Composer, InputFile, InlineKeyboard } from "grammy";
+import { BotContext } from "../types";
 import { readData, writeData } from "../storage";
 import { generateSecret } from "../utils";
 import { log } from "../logger";
 import { runCommand, escapeHtml, cmdLabel } from "../executor";
 import { handleVpsCommand } from "./vps";
 
-type ProjectContext = Context & ConversationFlavor<Context> & SessionFlavor<{ selectedProject?: string }>;
-
-export const projectComposer = new Composer<ProjectContext>();
+export const projectComposer = new Composer<BotContext>();
 
 projectComposer.command("addproject", async (ctx) => {
   await ctx.conversation.enter("addProject");
@@ -29,17 +26,17 @@ function buildProjectView(projectName: string) {
   const cmdNames = Object.keys(project.commands);
   const keyboard = new InlineKeyboard();
 
-  // Command buttons — 3 per row
   cmdNames.forEach((cmd, i) => {
     keyboard.text(cmdLabel(cmd), `run_cmd:${cmd}`);
     if ((i + 1) % 3 === 0) keyboard.row();
   });
   if (cmdNames.length % 3 !== 0) keyboard.row();
 
-  // Action buttons
   keyboard
     .text("➕ Add Cmd", `proj_addcmd:${projectName}`)
     .text("🗑 Del Cmd", `delcmd_project:${projectName}`)
+    .row()
+    .text("📤 Send File", `proj_sendfile:${projectName}`)
     .row()
     .text("🔑 Deploy Secret", `proj_secret:${projectName}`)
     .row()
@@ -75,17 +72,26 @@ projectComposer.on("callback_query:data", async (ctx, next) => {
           await ctx.reply(text, { parse_mode: "HTML" });
         }
       };
-      return { chatId: ctx.chat!.id, messageId: ackMsg.message_id, editFn };
+      const sendFileFn = async (buf: Buffer, name: string) => {
+        await ctx.replyWithDocument(new InputFile(buf, name));
+      };
+      return { chatId: ctx.chat!.id, messageId: ackMsg.message_id, editFn, sendFileFn };
     });
 
   } else if (data.startsWith("list_project:")) {
     const projectName = data.replace("list_project:", "");
+    ctx.session.awaitingInput = undefined;
+    ctx.session.pendingProject = undefined;
+    ctx.session.pendingCmdSuffix = undefined;
     const view = buildProjectView(projectName);
     if (!view) { await ctx.answerCallbackQuery("Project not found"); return; }
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(view.text, { parse_mode: "HTML", reply_markup: view.keyboard });
 
   } else if (data === "list_back") {
+    ctx.session.awaitingInput = undefined;
+    ctx.session.pendingProject = undefined;
+    ctx.session.pendingCmdSuffix = undefined;
     const botData = readData();
     const keyboard = new InlineKeyboard();
     Object.keys(botData.projects).forEach(name =>
@@ -96,9 +102,23 @@ projectComposer.on("callback_query:data", async (ctx, next) => {
 
   } else if (data.startsWith("proj_addcmd:")) {
     const projectName = data.replace("proj_addcmd:", "");
-    ctx.session.selectedProject = projectName;
+    ctx.session.pendingProject = projectName;
+    ctx.session.awaitingInput = "cmd_suffix";
     await ctx.answerCallbackQuery();
-    await ctx.conversation.enter("addCommand");
+    await ctx.reply(
+      `Adding command to <b>${projectName}</b>\nEnter command suffix — will be saved as <code>${projectName}_suffix</code>:\n(type /cancel to abort)`,
+      { parse_mode: "HTML" }
+    );
+
+  } else if (data.startsWith("proj_sendfile:")) {
+    const projectName = data.replace("proj_sendfile:", "");
+    ctx.session.pendingProject = projectName;
+    ctx.session.awaitingInput = "send_file";
+    await ctx.answerCallbackQuery();
+    await ctx.reply(
+      `📤 Send files for project <b>${projectName}</b>.\nFiles will be saved to the project directory.\n\nType anything to cancel.`,
+      { parse_mode: "HTML" }
+    );
 
   } else if (data.startsWith("proj_secret:")) {
     const projectName = data.replace("proj_secret:", "");
