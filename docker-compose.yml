@@ -1,0 +1,10 @@
+services:
+  telebot:
+    image: ghcr.io/tiephoangdev/vps-telebot:latest
+    build: .
+    restart: unless-stopped
+    volumes:
+      - ./data.json:/app/data.json
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - .env
