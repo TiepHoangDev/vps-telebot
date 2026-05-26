@@ -36,9 +36,18 @@ export async function runCommand(
 
     const output = stdout || stderr || "(no output)";
     if (isLogs) {
+      const MAX_SIZE = 5 * 1024 * 1024;
+      let buf = Buffer.from(output);
+      let truncated = false;
+      if (buf.length > MAX_SIZE) {
+        buf = buf.slice(buf.length - MAX_SIZE);
+        const nl = buf.indexOf(10);
+        if (nl > 0) buf = buf.slice(nl + 1);
+        truncated = true;
+      }
       log("RUN", `/${commandName} done (file)`);
-      await editFn(`✅ <code>/${commandName}</code>`);
-      await sendFileFn(Buffer.from(output), `${commandName}.log`);
+      await editFn(`✅ <code>/${commandName}</code>${truncated ? " (last 5 MB)" : ""}`);
+      await sendFileFn(buf, `${commandName}.txt`);
     } else {
       const trimmed = output.length > 3800 ? output.substring(0, 3800) + "\n...(truncated)" : output;
       log("RUN", `/${commandName} done`);

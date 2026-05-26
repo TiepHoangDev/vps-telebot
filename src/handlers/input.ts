@@ -7,12 +7,23 @@ import path from "path";
 
 async function downloadFile(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    try {
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+    } catch (e) {
+      reject(e);
+      return;
+    }
     const stream = fs.createWriteStream(dest);
+    stream.on("error", (err) => {
+      stream.destroy();
+      fs.unlink(dest, () => {});
+      reject(err);
+    });
     https.get(url, (res) => {
       res.pipe(stream);
       stream.on("finish", () => { stream.close(); resolve(); });
     }).on("error", (err) => {
+      stream.destroy();
       fs.unlink(dest, () => {});
       reject(err);
     });
@@ -25,6 +36,11 @@ export const inputMiddleware: Middleware<any> = async (ctx, next) => {
 
   const text: string | undefined = ctx.message?.text;
   const document = ctx.message?.document;
+
+  if (session.awaitingInput === "send_file" && ctx.message?.photo) {
+    await ctx.reply("Please send the file as a document — tap 📎 → File, not Photo.");
+    return;
+  }
 
   if (!text && !document) return next();
 
