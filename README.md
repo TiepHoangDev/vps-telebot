@@ -4,12 +4,12 @@ A Telegram bot for managing your VPS and Docker Compose projects — directly fr
 
 ## Features
 
-- **Button-driven UI** — everything accessible via inline buttons, no need to type commands
-- **Docker Compose management** — add any `docker-compose.yml` and get instant buttons: up, down, logs, pull, deploy
-- **Custom commands** — add any shell command as a button under a project
-- **VPS monitoring** — CPU, RAM, disk, uptime, load average, OS info
-- **GitHub Actions deploy** — trigger deploys from CI/CD via a project secret (no open ports needed)
-- **Auth** — password-protected setup, user allowlist
+- **Button-driven UI** — everything accessible via inline buttons, no need to type commands.
+- **Docker Compose management** — add any `docker-compose.yml` and get instant buttons: up, down, logs, pull, deploy.
+- **Custom commands** — add any shell command as a button under a project.
+- **VPS monitoring** — CPU, RAM, disk, uptime, load average, OS info.
+- **GitHub Actions deploy** — trigger deploys from CI/CD via a project secret (no open ports needed).
+- **Auth** — password-protected setup, user allowlist.
 
 ## Prerequisites
 
