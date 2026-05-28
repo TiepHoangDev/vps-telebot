@@ -3,7 +3,7 @@
  * where each x is a random lowercase alphanumeric character (a-z, 0-9)
  */
 export function generateSecret(): string {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   const segment = () => {
     let result = "";
     for (let i = 0; i < 4; i++) {
