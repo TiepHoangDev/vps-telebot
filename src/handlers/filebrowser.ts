@@ -99,7 +99,9 @@ fileBrowserComposer.on("message:text", async (ctx, next) => {
 
   if (text === "/0") {
     await deleteMsg();
-    await renderDir(ctx, path.dirname(ctx.session.fbDir));
+    const cur = ctx.session.fbDir;
+    const parent = path.dirname(cur);
+    if (parent !== cur) await renderDir(ctx, parent);
     return;
   }
 

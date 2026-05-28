@@ -45,6 +45,12 @@ bot.use(fileBrowserComposer);
 bot.use(commandComposer);
 bot.use(runnerMiddleware);
 
+bot.catch((err) => {
+  const ctx = err.ctx;
+  console.error(`Error handling update ${ctx.update.update_id}:`, err.error);
+  ctx.answerCallbackQuery?.().catch(() => {});
+});
+
 bot.api.setMyCommands([
   { command: "help", description: "Show all commands & projects" },
   { command: "addproject", description: "Add a docker compose project" },
