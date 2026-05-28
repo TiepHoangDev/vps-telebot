@@ -8,7 +8,9 @@ A Telegram bot for managing your VPS and Docker Compose projects — directly fr
 - **Docker Compose management** — add any `docker-compose.yml` and get instant buttons: up, down, logs, pull, deploy.
 - **Custom commands** — add any shell command as a button under a project.
 - **VPS monitoring** — CPU, RAM, disk, uptime, load average, OS info.
+- **File browser** — browse the VPS filesystem, download files/folders, delete files — all from Telegram.
 - **GitHub Actions deploy** — trigger deploys from CI/CD via a project secret (no open ports needed).
+- **Self-deploy safe** — deploy command uses `--force-recreate` (no `down` step), so the bot can redeploy itself without dying mid-update.
 - **Auth** — password-protected setup, user allowlist.
 
 ## Prerequisites
@@ -73,16 +75,15 @@ Click any project button to open its view:
 📁 myapp
 Path: /root/myapp/docker-compose.yml
 
-[ ▶ up      ] [ ⏹ down   ] [ ⏹ down -v ]
-[ 📋 logs   ] [ ⬇ pull   ] [ 🚀 deploy  ]
-[ my_custom ]
-
-[ ➕ Add Cmd ] [ 🗑 Del Cmd ]
-[ 📤 Send File               ]
-[ 🔑 Deploy Secret          ]
+[ 🐳 Docker  (6) ]
+[ ✨ Custom       ]
+[ 📤 Send File  ] [ 📂 Browse ]
+[ 🔑 Deploy Secret           ]
 [ 🗑 Delete Project          ]
-[ « Back                    ]
+[ « Back                     ]
 ```
+
+Commands are grouped (Docker, Custom, etc.). Click a group to expand and run its commands.
 
 Clicking a command button executes it immediately and shows the output.
 
@@ -101,9 +102,35 @@ The bot derives the project name from the folder (`myapp`) and auto-creates 6 bu
 | `▶ up` | `docker compose up -d` |
 | `⏹ down` | `docker compose down` |
 | `⏹ down -v` | `docker compose down -v` |
-| `📋 logs` | `docker compose logs --tail=50` |
+| `📋 logs` | `docker compose logs --tail=1000` |
 | `⬇ pull` | `docker compose pull` |
-| `🚀 deploy` | pull + up -d |
+| `🚀 deploy` | `pull` + `up -d --force-recreate` |
+
+> **Self-deploy:** the `--force-recreate` flag means the bot can deploy itself — no `down` step, so Docker daemon handles the container swap without the bot killing itself first.
+
+### File Browser
+
+Open a project → **📂 Browse** to navigate the VPS filesystem starting from the project's directory.
+
+```
+📁 /root/myapp
+
+/0 ⬆ ..
+/1 📁 data
+/2 📁 logs
+/3 📄 docker-compose.yml
+/4 📄 .env
+
+[← Project]
+```
+
+- Type `/1`, `/2`, ... to navigate into a folder or select a file
+- `/0` goes up to the parent directory
+- `/next` / `/prev` for pagination (50 items per page)
+- Selecting a **folder** → offers Download as `.tar.gz` or View inside
+- Selecting a **file** → offers Download or Delete
+
+---
 
 ### Adding a custom command
 
@@ -186,7 +213,7 @@ All state is stored in `data.json` (mounted as a volume). You can back it up or 
       "deploy_secret": "xxxx-xxxx-xxxx",
       "commands": {
         "myapp_up":     "docker compose -f /root/myapp/docker-compose.yml up -d",
-        "myapp_deploy": "docker compose -f /root/myapp/docker-compose.yml pull && docker compose -f /root/myapp/docker-compose.yml up -d",
+        "myapp_deploy": "docker compose -f /root/myapp/docker-compose.yml pull && docker compose -f /root/myapp/docker-compose.yml up -d --force-recreate",
         "myapp_restart_worker": "docker compose -f /root/myapp/docker-compose.yml restart worker"
       }
     }
