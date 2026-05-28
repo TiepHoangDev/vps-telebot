@@ -213,6 +213,16 @@ projectComposer.on("callback_query:data", async (ctx, next) => {
 
   } else if (data === "help_addproject") {
     await ctx.answerCallbackQuery();
+    const keyboard = new InlineKeyboard()
+      .text("✏️ Enter path manually", "addproj_manual").row()
+      .text("📂 Browse filesystem", "fb:addproject");
+    await ctx.editMessageText(
+      "➕ <b>Add Project</b>\n\nNavigate to your <code>docker-compose.yml</code> or enter the path manually.",
+      { parse_mode: "HTML", reply_markup: keyboard }
+    );
+
+  } else if (data === "addproj_manual") {
+    await ctx.answerCallbackQuery();
     await ctx.conversation.enter("addProject");
 
   } else if (data === "help_vps") {

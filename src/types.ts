@@ -23,6 +23,7 @@ export type SessionData = {
   fbAllItems?: string[];
   fbPage?: number;
   fbMessageId?: number;
+  fbMode?: 'addproject';
 };
 
 export type BotContext = Context & SessionFlavor<SessionData> & ConversationFlavor<Context>;

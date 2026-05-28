@@ -1,7 +1,8 @@
 import { Composer, InlineKeyboard, InputFile } from "grammy";
 import { BotContext } from "../types";
 import { buildProjectView } from "./project";
-import { readData } from "../storage";
+import { readData, writeData } from "../storage";
+import { Project } from "../types";
 import { log } from "../logger";
 import fs from "fs";
 import path from "path";
@@ -134,12 +135,32 @@ fileBrowserComposer.on("message:text", async (ctx, next) => {
     await deleteMsg();
 
     if (isDir) {
-      const keyboard = new InlineKeyboard()
-        .text("⬇ Download .tar.gz", "fb:dlzip")
-        .text("👁 View", "fb:view")
-        .row()
-        .text("« Back", "fb:diritems");
-      await editBrowserMessage(ctx, `📁 <code>${fullPath}</code>`, keyboard);
+      if (ctx.session.fbMode === "addproject") {
+        await renderDir(ctx, fullPath);
+      } else {
+        const keyboard = new InlineKeyboard()
+          .text("⬇ Download .tar.gz", "fb:dlzip")
+          .text("👁 View", "fb:view")
+          .row()
+          .text("« Back", "fb:diritems");
+        await editBrowserMessage(ctx, `📁 <code>${fullPath}</code>`, keyboard);
+      }
+    } else if (ctx.session.fbMode === "addproject") {
+      if (name !== "docker-compose.yml" && name !== "docker-compose.yaml") {
+        await editBrowserMessage(ctx,
+          `⚠️ Please select a <code>docker-compose.yml</code> file.\n\n📄 <code>${fullPath}</code>`,
+          new InlineKeyboard().text("« Back", "fb:diritems")
+        );
+      } else {
+        const projectName = path.basename(path.dirname(fullPath));
+        const keyboard = new InlineKeyboard()
+          .text("✅ Add project", "fb:addproject_confirm").row()
+          .text("❌ Cancel", "fb:diritems");
+        await editBrowserMessage(ctx,
+          `➕ Add project <b>${projectName}</b>?\n\n📄 <code>${fullPath}</code>`,
+          keyboard
+        );
+      }
     } else {
       let sizeStr = "";
       try { sizeStr = `  (${formatSize(fs.statSync(fullPath).size)})`; } catch {}
@@ -162,6 +183,63 @@ fileBrowserComposer.on("message:text", async (ctx, next) => {
 fileBrowserComposer.on("callback_query:data", async (ctx, next) => {
   const data = ctx.callbackQuery.data;
   if (!data.startsWith("fb:")) return next();
+
+  if (data === "fb:addproject") {
+    await ctx.answerCallbackQuery();
+    ctx.session.fbMode = "addproject";
+    ctx.session.fbProject = undefined;
+    const startDir = fs.existsSync("/root") ? "/root" : "/";
+    await renderDir(ctx, startDir);
+    return;
+  }
+
+  if (data === "fb:addproject_confirm") {
+    const composePath = ctx.session.fbSelected;
+    if (!composePath) { await ctx.answerCallbackQuery(); return; }
+
+    const projectName = path.basename(path.dirname(composePath));
+    const botData = readData();
+
+    if (botData.projects[projectName]) {
+      await ctx.answerCallbackQuery();
+      const keyboard = new InlineKeyboard().text("« Back", "fb:diritems");
+      await ctx.editMessageText(
+        `⚠️ Project <b>${projectName}</b> already exists. Delete it first or rename manually in data.json.`,
+        { parse_mode: "HTML", reply_markup: keyboard }
+      );
+      return;
+    }
+
+    const commands: Record<string, Record<string, string>> = {
+      Docker: {
+        [`${projectName}_up`]:     `docker compose -f ${composePath} up -d`,
+        [`${projectName}_down`]:   `docker compose -f ${composePath} down`,
+        [`${projectName}_downv`]:  `docker compose -f ${composePath} down -v`,
+        [`${projectName}_logs`]:   `docker compose -f ${composePath} logs --tail=1000`,
+        [`${projectName}_pull`]:   `docker compose -f ${composePath} pull`,
+        [`${projectName}_deploy`]: `docker compose -f ${composePath} pull && docker compose -f ${composePath} up -d --force-recreate`,
+      },
+    };
+    const project: Project = { path: composePath, commands };
+    botData.projects[projectName] = project;
+    writeData(botData);
+    log("PROJECT", `Added: ${projectName}`);
+
+    ctx.session.fbMode = undefined;
+    ctx.session.fbDir = undefined;
+    ctx.session.fbItems = undefined;
+    ctx.session.fbAllItems = undefined;
+    ctx.session.fbPage = undefined;
+    ctx.session.fbSelected = undefined;
+    ctx.session.fbMessageId = undefined;
+
+    await ctx.answerCallbackQuery("✅ Project added!");
+    await ctx.editMessageText(
+      `✅ Project <b>${projectName}</b> added!\n📄 <code>${composePath}</code>`,
+      { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("« Back to menu", "list_back") }
+    );
+    return;
+  }
 
   if (data.startsWith("fb:open:")) {
     const projectName = data.replace("fb:open:", "");
@@ -259,6 +337,7 @@ fileBrowserComposer.on("callback_query:data", async (ctx, next) => {
     ctx.session.fbPage = undefined;
     ctx.session.fbSelected = undefined;
     ctx.session.fbMessageId = undefined;
+    ctx.session.fbMode = undefined;
     await ctx.answerCallbackQuery();
     if (!projectName) return;
     const view = buildProjectView(projectName);
