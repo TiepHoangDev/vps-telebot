@@ -1,10 +1,12 @@
 import { exec } from "child_process";
 import { promisify } from "util";
+import fs from "fs";
 import { readData, findCommand } from "../storage";
 import { log } from "../logger";
-import { escapeHtml } from "../executor";
+import { escapeHtml, spawnSiblingDeploy } from "../executor";
 
 const execAsync = promisify(exec);
+const INSIDE_DOCKER = fs.existsSync("/.dockerenv");
 
 export async function handleDeployCommand(ctx: any): Promise<void> {
   if (!ctx.from?.id) return;
@@ -41,6 +43,23 @@ export async function handleDeployCommand(ctx: any): Promise<void> {
 
   log("DEPLOY", `Triggered for ${projectName}`);
   const ackMsg = await ctx.reply(`⏳ Deploying <b>${projectName}</b>...`, { parse_mode: "HTML" });
+
+  if (INSIDE_DOCKER) {
+    try {
+      await spawnSiblingDeploy(deployCmd);
+      log("DEPLOY", `Queued via sibling: ${projectName}`);
+      await ctx.api.editMessageText(
+        ctx.chat.id, ackMsg.message_id,
+        `🔄 <b>${projectName}</b> deploy queued — bot will restart shortly...`,
+        { parse_mode: "HTML" }
+      );
+    } catch (err: any) {
+      log("DEPLOY", `Sibling spawn failed: ${err.message}`);
+      await ctx.api.editMessageText(ctx.chat.id, ackMsg.message_id,
+        `❌ Deploy failed: ${escapeHtml(err.message)}`, { parse_mode: "HTML" });
+    }
+    return;
+  }
 
   try {
     const { stdout, stderr } = await execAsync(deployCmd, {

@@ -66,6 +66,7 @@ process.once("SIGTERM", shutdown);
 
 async function startBot() {
   try {
+    await bot.api.setChatMenuButton({ menu_button: { type: "commands" } });
     await bot.start({
       onStart: (botInfo) => console.log(`Bot started: @${botInfo.username}`),
     });

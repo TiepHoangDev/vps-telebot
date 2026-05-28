@@ -1,5 +1,6 @@
 import { exec } from "child_process";
 import { promisify } from "util";
+import fs from "fs";
 import { log } from "./logger";
 
 const execAsync = promisify(exec);
@@ -7,6 +8,20 @@ const execAsync = promisify(exec);
 const SHELL = process.platform === "win32"
   ? (process.env.ComSpec || "cmd.exe")
   : "/bin/sh";
+
+const INSIDE_DOCKER = fs.existsSync("/.dockerenv");
+
+async function getSelfImage(): Promise<string> {
+  const { stdout } = await execAsync(`docker inspect $(hostname) --format '{{.Config.Image}}'`, { shell: "/bin/sh" });
+  return stdout.trim();
+}
+
+export async function spawnSiblingDeploy(shellCommand: string): Promise<void> {
+  const image = await getSelfImage();
+  const escaped = shellCommand.replace(/'/g, `'\\''`);
+  const cmd = `docker run --rm -d -v /var/run/docker.sock:/var/run/docker.sock -v /root:/root ${image} sh -c 'sleep 3 && ${escaped}'`;
+  await execAsync(cmd);
+}
 
 type RunCallbacks = {
   chatId: number;
@@ -26,6 +41,14 @@ export async function runCommand(
   const timeout = isLogs ? 300000 : 60000;
 
   log("RUN", `/${commandName}`);
+
+  const isDeployCmd = commandName.endsWith("_deploy");
+  if (INSIDE_DOCKER && isDeployCmd) {
+    await spawnSiblingDeploy(shellCommand);
+    log("RUN", `/${commandName} queued via sibling`);
+    await editFn(`🔄 <code>/${commandName}</code> queued — bot will restart shortly...`);
+    return;
+  }
 
   try {
     const { stdout, stderr } = await execAsync(shellCommand, {
