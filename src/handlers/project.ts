@@ -116,6 +116,13 @@ projectComposer.on("callback_query:data", async (ctx, next) => {
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(view.text, { parse_mode: "HTML", reply_markup: view.keyboard });
 
+  } else if (data.startsWith("proj_view:")) {
+    const projectName = data.replace("proj_view:", "");
+    const view = buildProjectView(projectName);
+    if (!view) { await ctx.answerCallbackQuery("Project not found"); return; }
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(view.text, { parse_mode: "HTML", reply_markup: view.keyboard });
+
   } else if (data.startsWith("list_project:")) {
     const projectName = data.replace("list_project:", "");
     ctx.session.awaitingInput = undefined;
@@ -175,13 +182,12 @@ projectComposer.on("callback_query:data", async (ctx, next) => {
       `      -d "chat_id=\${{ secrets.CHAT_ID }}" \\\n` +
       `      -d "text=/deploy ${projectName} ${secret}"`;
 
+    const keyboard = new InlineKeyboard().text("« Back", `proj_view:${projectName}`);
     await ctx.answerCallbackQuery("Secret generated!");
-    await ctx.reply(
+    await ctx.editMessageText(
       `🔑 Deploy secret for <b>${projectName}</b>:\n\n<code>${secret}</code>\n\n<b>GitHub Actions:</b>\n<pre>${escapeHtml(snippet)}</pre>`,
-      { parse_mode: "HTML" }
+      { parse_mode: "HTML", reply_markup: keyboard }
     );
-    const view = buildProjectView(projectName);
-    if (view) await ctx.reply(view.text, { parse_mode: "HTML", reply_markup: view.keyboard });
 
   } else if (data.startsWith("proj_delete:")) {
     const projectName = data.replace("proj_delete:", "");
