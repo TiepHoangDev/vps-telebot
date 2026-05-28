@@ -20,6 +20,9 @@ export type SessionData = {
   fbProject?: string;
   fbSelected?: string;
   fbItems?: string[];
+  fbAllItems?: string[];
+  fbPage?: number;
+  fbMessageId?: number;
 };
 
 export type BotContext = Context & SessionFlavor<SessionData> & ConversationFlavor<Context>;
