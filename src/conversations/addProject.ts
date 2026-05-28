@@ -37,7 +37,7 @@ export async function addProjectConversation(
       [`${projectName}_downv`]:  `docker compose -f ${dockerComposePath} down -v`,
       [`${projectName}_logs`]:   `docker compose -f ${dockerComposePath} logs --tail=1000`,
       [`${projectName}_pull`]:   `docker compose -f ${dockerComposePath} pull`,
-      [`${projectName}_deploy`]: `docker compose -f ${dockerComposePath} pull && docker compose -f ${dockerComposePath} up -d`,
+      [`${projectName}_deploy`]: `docker compose -f ${dockerComposePath} pull && docker compose -f ${dockerComposePath} up -d --force-recreate`,
     },
   };
 
