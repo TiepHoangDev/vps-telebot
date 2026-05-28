@@ -11,6 +11,29 @@ const SHELL = process.platform === "win32"
 
 const INSIDE_DOCKER = fs.existsSync("/.dockerenv");
 
+// Cached compose file path of the bot's own container (from docker labels)
+let _selfComposePath: string | undefined;
+
+async function getSelfComposePath(): Promise<string> {
+  if (_selfComposePath !== undefined) return _selfComposePath;
+  try {
+    const { stdout } = await execAsync(
+      `docker inspect $(hostname) --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}'`,
+      { shell: "/bin/sh" }
+    );
+    _selfComposePath = stdout.trim();
+  } catch {
+    _selfComposePath = "";
+  }
+  return _selfComposePath;
+}
+
+export async function isSelfDeploy(shellCommand: string): Promise<boolean> {
+  if (!INSIDE_DOCKER) return false;
+  const composePath = await getSelfComposePath();
+  return composePath.length > 0 && shellCommand.includes(composePath);
+}
+
 async function getSelfImage(): Promise<string> {
   const { stdout } = await execAsync(`docker inspect $(hostname) --format '{{.Config.Image}}'`, { shell: "/bin/sh" });
   return stdout.trim();
@@ -43,7 +66,7 @@ export async function runCommand(
   log("RUN", `/${commandName}`);
 
   const isDeployCmd = commandName.endsWith("_deploy");
-  if (INSIDE_DOCKER && isDeployCmd) {
+  if (isDeployCmd && await isSelfDeploy(shellCommand)) {
     await spawnSiblingDeploy(shellCommand);
     log("RUN", `/${commandName} queued via sibling`);
     await editFn(`🔄 <code>/${commandName}</code> queued — bot will restart shortly...`);

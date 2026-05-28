@@ -1,12 +1,10 @@
 import { exec } from "child_process";
 import { promisify } from "util";
-import fs from "fs";
 import { readData, findCommand } from "../storage";
 import { log } from "../logger";
-import { escapeHtml, spawnSiblingDeploy } from "../executor";
+import { escapeHtml, spawnSiblingDeploy, isSelfDeploy } from "../executor";
 
 const execAsync = promisify(exec);
-const INSIDE_DOCKER = fs.existsSync("/.dockerenv");
 
 export async function handleDeployCommand(ctx: any): Promise<void> {
   if (!ctx.from?.id) return;
@@ -44,7 +42,7 @@ export async function handleDeployCommand(ctx: any): Promise<void> {
   log("DEPLOY", `Triggered for ${projectName}`);
   const ackMsg = await ctx.reply(`⏳ Deploying <b>${projectName}</b>...`, { parse_mode: "HTML" });
 
-  if (INSIDE_DOCKER) {
+  if (await isSelfDeploy(deployCmd)) {
     try {
       await spawnSiblingDeploy(deployCmd);
       log("DEPLOY", `Queued via sibling: ${projectName}`);

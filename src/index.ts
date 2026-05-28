@@ -12,6 +12,7 @@ import { handleHelp } from "./handlers/help";
 import { inputMiddleware } from "./handlers/input";
 import { fileBrowserComposer } from "./handlers/filebrowser";
 import { BotContext, SessionData } from "./types";
+import { readData } from "./storage";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -57,8 +58,17 @@ bot.api.setMyCommands([
   { command: "vps", description: "Show VPS resource usage" },
 ]);
 
-const shutdown = () => {
+async function notifyAdmins(text: string) {
+  const users = readData().allowed_users;
+  await Promise.all(users.map(id => bot.api.sendMessage(id, text).catch(() => {})));
+}
+
+const shutdown = async () => {
   console.log("Shutting down...");
+  await Promise.race([
+    notifyAdmins("🔴 Bot shutting down..."),
+    new Promise(r => setTimeout(r, 3000)),
+  ]);
   bot.stop();
 };
 process.once("SIGINT", shutdown);
@@ -68,7 +78,10 @@ async function startBot() {
   try {
     await bot.api.setChatMenuButton({ menu_button: { type: "commands" } });
     await bot.start({
-      onStart: (botInfo) => console.log(`Bot started: @${botInfo.username}`),
+      onStart: async (botInfo) => {
+        console.log(`Bot started: @${botInfo.username}`);
+        await notifyAdmins(`✅ Bot started @${botInfo.username}`);
+      },
     });
   } catch (err: any) {
     if (err?.error_code === 409) {
